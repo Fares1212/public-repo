@@ -8,6 +8,7 @@ increase by one. Holding the key counts once, rather than repeating.
 
 1. Install **Python 3.10 or newer** from [python.org](https://www.python.org/downloads/windows/).
    Include Tcl/Tk (the default desktop installation does) and the Python launcher.
+   Select **Add python.exe to PATH** in the installer.
 2. Download this repository and double-click **Launch Chest Counter.bat**.
    Or run `py -3 main.py` from the repository folder.
 3. Set Fortnite's display mode to **Windowed Fullscreen**, so Windows can display
@@ -17,6 +18,21 @@ increase by one. Holding the key counts once, rather than repeating.
 
 No `pip install`, account, API key, or administrator permissions are required.
 This source download does require Python; it is not a prebuilt `.exe`.
+
+The startup file checks that Python actually runs and includes Tk before opening
+the app. It tries the Python launcher, PATH, other supported launcher versions,
+and standard installation folders. Keep its console window open while using the
+overlay; startup errors remain visible there.
+
+### If Python Launcher says "Unable to create process"
+
+This means the launcher points to a Python executable that was moved or deleted
+(for example, a missing `Documents\python2\pythonw.exe`). Download the current ZIP
+and extract it again: the updated startup file skips broken interpreter entries.
+If it reports that no working Python was found, install or repair Python 3.10+
+using the official installer above, with **Tcl/Tk** and **Add python.exe to PATH**
+enabled. Then run **Launch Chest Counter.bat** again. Your saved chest counts are
+kept separately from the app folder.
 
 ## Controls
 
