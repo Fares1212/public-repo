@@ -1,6 +1,7 @@
 """Tk overlay: all interaction is manual; no connection to Fortnite."""
 
 from copy import deepcopy
+from pathlib import Path
 import sys
 import tkinter as tk
 from tkinter import messagebox, simpledialog
@@ -27,12 +28,20 @@ class Overlay:
         self.flash = False
         self.busy = False
         self.drag = None
-        self.edges = {key: PressEdge() for key in ("left", "P", "L", "M", "Q")}
+        self.edges = {key: PressEdge() for key in ("count", "P", "L", "M", "Q")}
         if desktop:
-            self.edges["left"].update(desktop.down(desktop.LEFT))
+            self.edges["count"].update(desktop.count_down())
             for letter in ("P", "L", "M", "Q"):
                 self.edges[letter].update(desktop.shortcut(letter))
         self.font = "Segoe UI" if sys.platform == "win32" else "Arial"
+        chest_path = Path(__file__).resolve().parent.parent / "assets" / "fortnite-chest.png"
+        chest_image = tk.PhotoImage(master=root, file=chest_path)
+        side = max(chest_image.width(), chest_image.height())
+        if side <= 68:
+            self.compact_chest = chest_image.zoom(68 // side, 68 // side)
+        else:
+            scale = (side + 67) // 68
+            self.compact_chest = chest_image.subsample(scale, scale)
         root.title("Chest Counter")
         root.configure(bg=BG)
         root.overrideredirect(True)
@@ -45,6 +54,7 @@ class Overlay:
         self.canvas.bind("<ButtonPress-1>", self.drag_start)
         self.canvas.bind("<B1-Motion>", self.drag_move)
         self.canvas.bind("<ButtonRelease-1>", lambda event: setattr(self, "drag", None))
+        self.canvas.bind("<Button-3>", lambda event: self.toggle_compact() if self.compact else None)
         if not desktop:
             # Other systems support UI preview only, not in-game background counting.
             for letter, action in (("p", self.toggle_pause), ("m", self.toggle_compact), ("q", self.close)):
@@ -91,27 +101,18 @@ class Overlay:
         c = self.canvas
         c.delete("all")
         c.configure(cursor="")
-        w = 320 if self.compact else 400
-        h = 190 if self.compact else 590
-        c.create_rectangle(0, 0, w-1, h-1, outline=LINE)
         if self.compact:
-            self.text(20, 23, "CHEST COUNTER", 10, MUTED, "bold")
-            self.text(20, 83, f"{self.state.session:,}", 44, ACCENT if self.flash else TEXT, "bold")
-            self.text(22, 126, "THIS SESSION", 9, MUTED, "bold")
-            self.text(295, 82, f"{self.state.lifetime:,}", 24, GOLD, "bold", "e")
-            self.text(295, 118, "ALL TIME", 9, MUTED, "bold", "e")
-            if not self.locked:
-                self.button("lock", 162, 12, 47, 26, "Lock", self.toggle_lock, disabled=not self.desktop)
-                self.button("expand", 219, 12, 44, 26, "+", self.toggle_compact)
-                self.button("exit", 273, 12, 30, 26, "×", self.close)
-            status = "PAUSED" if self.paused else "LEFT ARROW  +1"
-            if not self.desktop:
-                status = "UI PREVIEW · WINDOWS FOR GLOBAL KEYS"
-            self.text(20, 165, status, 8, GOLD if self.paused else ACCENT, "bold")
-            if self.locked:
-                self.text(300, 165, "Ctrl+Shift+L", 8, MUTED, anchor="e")
+            color = GOLD if self.paused else ACCENT if self.flash else TEXT
+            count = self.text(12, 42, f"{self.state.session:,}", 44, color, "bold",
+                              tags=("compact-count",))
+            number_right = c.bbox(count)[2]
+            c.create_image(number_right + 12, 42, image=self.compact_chest,
+                           anchor="w", tags=("compact-chest",))
+            width = number_right + 24 + self.compact_chest.width()
+            self.root.geometry(f"{width}x84")
             return
 
+        c.create_rectangle(0, 0, 399, 589, outline=LINE)
         self.chest(23, 20, 0.55)
         self.text(69, 30, "CHEST COUNTER", 12, TEXT, "bold")
         self.text(69, 51, "YOUR LOOT. YOUR NUMBERS.", 8, MUTED)
@@ -146,7 +147,7 @@ class Overlay:
         self.button("session", 20, 478, 174, 37, "New session", self.new_session)
         self.button("compact", 206, 478, 174, 37, "Compact overlay  ↗", self.toggle_compact)
         c.create_oval(22, 537, 28, 543, fill=GOLD if self.paused else ACCENT, outline="")
-        label = "Paused · counts will not change" if self.paused else "Left Arrow  =  +1 chest"
+        label = "Paused · counts will not change" if self.paused else "²  =  +1 chest"
         if not self.desktop:
             label = "UI preview · global keys require Windows"
         self.text(37, 540, label, 9, GOLD if self.paused else MUTED)
@@ -219,7 +220,11 @@ class Overlay:
         self.compact = not self.compact
         if self.locked:
             self.toggle_lock()
-        self.root.geometry("320x190" if self.compact else "400x590")
+        self.root.attributes("-alpha", 1.0 if self.compact else 0.97)
+        if sys.platform == "win32":
+            self.root.attributes("-transparentcolor", BG if self.compact else "")
+        if not self.compact:
+            self.root.geometry("400x590")
         self.render()
 
     def toggle_lock(self):
@@ -241,7 +246,7 @@ class Overlay:
                        "M": self.toggle_compact, "Q": self.close}
             # Always update edges, even when paused or a dialog is open. Holding
             # a key while resuming must not add an unintended chest.
-            pressed = self.edges["left"].update(self.desktop.down(self.desktop.LEFT))
+            pressed = self.edges["count"].update(self.desktop.count_down())
             shortcut_presses = {letter: self.edges[letter].update(self.desktop.shortcut(letter))
                                 for letter in actions}
             if not self.busy:
@@ -266,7 +271,7 @@ class Overlay:
         if self.locked:
             return
         current = self.canvas.find_withtag("current")
-        if current and set(self.canvas.gettags(current[0])) - {"current"}:
+        if not self.compact and current and set(self.canvas.gettags(current[0])) - {"current"}:
             return
         if event.y < 72:
             self.drag = (event.x_root-self.root.winfo_x(), event.y_root-self.root.winfo_y())

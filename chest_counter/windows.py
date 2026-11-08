@@ -9,7 +9,9 @@ import hashlib
 
 
 class WindowsDesktop:
-    LEFT = 0x25
+    # The key immediately left of the number row's 1 is labelled ² on AZERTY.
+    COUNT_SCAN_CODE = 0x29
+    MAPVK_VSC_TO_VK_EX = 3
     CONTROL = 0x11
     SHIFT = 0x10
     WS_EX_TRANSPARENT = 0x20
@@ -20,6 +22,11 @@ class WindowsDesktop:
         self.kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
         self.user32.GetAsyncKeyState.argtypes = [ctypes.c_int]
         self.user32.GetAsyncKeyState.restype = ctypes.c_short
+        self.user32.VkKeyScanW.argtypes = [wintypes.WCHAR]
+        self.user32.VkKeyScanW.restype = ctypes.c_short
+        self.user32.MapVirtualKeyW.argtypes = [wintypes.UINT, wintypes.UINT]
+        self.user32.MapVirtualKeyW.restype = wintypes.UINT
+        self.count_key = self._count_virtual_key()
         self.user32.GetAncestor.argtypes = [wintypes.HWND, wintypes.UINT]
         self.user32.GetAncestor.restype = wintypes.HWND
         # Get/SetWindowLongPtr on 64-bit Windows, WindowLong on 32-bit Windows.
@@ -54,6 +61,18 @@ class WindowsDesktop:
 
     def down(self, key):
         return bool(self.user32.GetAsyncKeyState(key) & 0x8000)
+
+    def _count_virtual_key(self):
+        # Prefer the actual unmodified ² character on the current Windows layout.
+        # A layout without that character uses the same physical key instead;
+        # do not accidentally turn a Shift/AltGr combination into another hotkey.
+        mapping = self.user32.VkKeyScanW("²")
+        if mapping != -1 and mapping >> 8 == 0 and mapping & 0xFF:
+            return mapping & 0xFF
+        return self.user32.MapVirtualKeyW(self.COUNT_SCAN_CODE, self.MAPVK_VSC_TO_VK_EX) or 0xDE
+
+    def count_down(self):
+        return self.down(self.count_key)
 
     def shortcut(self, letter):
         return self.down(self.CONTROL) and self.down(self.SHIFT) and self.down(ord(letter))

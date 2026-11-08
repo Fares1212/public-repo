@@ -1,7 +1,7 @@
 # Chest Counter
 
 A small, standalone Windows overlay for manually counting Fortnite chests.
-Open a chest, tap **Left Arrow**, and your session, daily, and all-time totals
+Open a chest, tap **²**, and your session, daily, and all-time totals
 increase by one. Holding the key counts once, rather than repeating.
 
 ## Start on Windows
@@ -13,8 +13,11 @@ increase by one. Holding the key counts once, rather than repeating.
    Or run `py -3 main.py` from the repository folder.
 3. Set Fortnite's display mode to **Windowed Fullscreen**, so Windows can display
    the separate overlay above it. Drag the overlay's header to position it.
-4. Choose **Compact overlay**, then click **Lock** or press **Ctrl+Shift+L**
-   to let mouse clicks pass through the overlay. Press the shortcut again to unlock.
+4. Choose **Compact overlay** for just the session number followed by a real
+   Fortnite chest image, with a transparent background on Windows. Press
+   **Ctrl+Shift+L** to let mouse clicks pass through; press it again to unlock.
+   **Ctrl+Shift+M** returns to the full controls. Right-clicking the compact
+   overlay also returns to the controls when it is unlocked.
 
 No `pip install`, account, API key, or administrator permissions are required.
 This source download does require Python; it is not a prebuilt `.exe`.
@@ -38,12 +41,12 @@ kept separately from the app folder.
 
 | Action | Control |
 | --- | --- |
-| Count one chest | Left Arrow, or **Add chest** |
+| Count one chest | **²**, or **Add chest** |
 | Correct a mistake | **Undo** (up to the last 100 additions in this session) |
 | Pause or resume counting | **Ctrl+Shift+P**, or **Pause** |
 | Switch full / compact view | **Ctrl+Shift+M**, or the view buttons |
 | Toggle mouse click-through | **Ctrl+Shift+L** (Windows) |
-| Close, including while locked | **Ctrl+Shift+Q**, or **×** while unlocked |
+| Close, including while locked | **Ctrl+Shift+Q**, or **×** in the full view |
 | Reset this session, keep overall totals | **New session**, then confirm |
 | Change the session goal | **Edit** beside the goal |
 
@@ -57,14 +60,18 @@ launch, so you always start with visible, unlocked controls.
 
 The app never opens Fortnite's process or files, reads game memory, injects code,
 uses game hooks, automates chest opening, or sends input to Fortnite. It only
-queries Windows for the state of the Left Arrow and its own shortcut keys, and
+queries Windows for the state of the ² key and its own shortcut keys, and
 changes styles on its own window. It makes no network requests.
 
-Counting is entirely manual. Left Arrow works **regardless of which app is in
+Counting is entirely manual. **²** works **regardless of which app is in
 focus**; pause counting when you are not tracking chests. It is not swallowed or
-remapped, so any existing Left Arrow binding in Fortnite still works. Very short
+remapped, so any existing ² binding in Fortnite still works. On French AZERTY
+keyboards this is the key just left of `1`; on layouts without an unmodified ²
+character the app uses that same physical key. Left Arrow no longer counts. Very short
 taps between the 16 ms polling samples can be missed. An exclusive fullscreen
 game can cover an ordinary desktop overlay; use Windowed Fullscreen.
+Restart the app after changing your Windows keyboard layout so the count key
+is resolved again.
 
 ## Your save file
 
@@ -97,9 +104,14 @@ Tests without a desktop run the counter/storage suite and mark GUI tests skipped
 For the complete suite, use an available desktop display (or a headless X server),
 for example `DISPLAY=:99 python3 -m unittest discover -v`.
 
-Validated in this Linux cloud environment: **19 passing tests**, including real
+Validated in this Linux cloud environment: **27 passing tests**, including real
 Tk button interactions, keyboard-edge polling through a simulated OS adapter,
 pause, compact layout, undo, session resets, daily rollover, persistence, and
-write-failure recovery. Expanded and compact windows were also rendered and
+write-failure recovery, the minimal number-and-image compact view, and simulated
+Windows keyboard layouts for the ² key. Expanded and compact windows were also rendered and
 visually inspected. The actual Windows APIs, launcher, click-through behavior,
 and display over Fortnite still need a Windows machine for end-to-end validation.
+
+The bundled Fortnite chest image and its source are documented in
+[`assets/README.md`](assets/README.md). It is loaded locally; the app does not
+download images or connect to Fortnite while running.
